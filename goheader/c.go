@@ -12,6 +12,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"regexp"
 	"os"
 	"strconv"
@@ -60,7 +61,7 @@ var (
 // NOTE: the regular expression for single comments (reSingleComment) returns
 // spaces before of "*/".
 // The issue is that Go's regexp lib. doesn't support non greedy matches.
-func (self *translate) C(file *os.File) os.Error {
+func (self *translate) C(file *os.File) error {
 	var isMultipleComment, isTypeBlock, isConstBlock, isStruct, isEnum bool
 	lastEnumValue := -1
 	extraTypedef := make([]string, 0, 0) // Types defined in the header file.
@@ -72,7 +73,7 @@ func (self *translate) C(file *os.File) os.Error {
 
 	for {
 		line, err := fileBuf.ReadString('\n')
-		if err == os.EOF {
+		if err == io.EOF {
 			break
 		}
 		line = strings.TrimSpace(line) + "\n"

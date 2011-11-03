@@ -29,7 +29,7 @@ const (
 )
 
 // Formats the Go source code.
-func (self *translate) format() os.Error {
+func (self *translate) format() error {
 	fset := token.NewFileSet()
 
 	// The output is an abstract syntax tree (AST) representing the Go source.
@@ -48,7 +48,7 @@ func (self *translate) format() os.Error {
 	return nil
 }
 
-func (self *translate) write() os.Error {
+func (self *translate) write() error {
 	output := new(bytes.Buffer)
 
 	if !*debug {

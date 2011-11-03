@@ -24,7 +24,7 @@ func isHeader(f *os.FileInfo) bool {
 // === Walk into a directory
 
 func walkDir(path string) {
-	errors := make(chan os.Error)
+	errors := make(chan error)
 	done := make(chan bool)
 
 	// Error handler
@@ -43,8 +43,8 @@ func walkDir(path string) {
 }
 
 // Implements "filepath.WalkFunc".
-func walkFn(errors chan os.Error) filepath.WalkFunc {
-	return func(path string, info *os.FileInfo, err os.Error) os.Error {
+func walkFn(errors chan error) filepath.WalkFunc {
+	return func(path string, info *os.FileInfo, err error) error {
 		if err != nil {
 			errors <- err
 			return nil

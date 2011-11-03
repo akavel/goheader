@@ -40,7 +40,7 @@ func usage() {
 	os.Exit(2)
 }
 
-func processFile(filename string) os.Error {
+func processFile(filename string) error {
 	file, err := os.OpenFile(filename, os.O_RDONLY, 0)
 	if err != nil {
 		return err

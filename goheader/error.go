@@ -16,7 +16,7 @@ import (
 
 var exitCode = 0
 
-func reportError(err os.Error) {
-	fmt.Fprintf(os.Stderr, err.String())
+func reportError(err error) {
+	fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 	exitCode = 2
 }
