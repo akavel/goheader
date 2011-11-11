@@ -23,7 +23,7 @@ Nothing.
 ## Licensing
 
 ***Copyright 2010  The "GoHeader" Authors***  
-See file AUTHORS and CONTRIBUTORS (if any).
+See file AUTHORS and CONTRIBUTORS.
 
 Licensed under **BSD-2 Clause license**.  
 See file LICENSE.
