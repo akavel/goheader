@@ -16,13 +16,13 @@ package main
 
 import (
 	"os"
-	"strings"
 	"path/filepath"
+	"strings"
 )
 
-func isHeader(f *os.FileInfo) bool {
-	return f.IsRegular() && !strings.HasPrefix(f.Name, ".") &&
-		strings.HasSuffix(f.Name, ".h")
+func isHeader(f os.FileInfo) bool {
+	return !f.IsDir() && !strings.HasPrefix(f.Name(), ".") &&
+		strings.HasSuffix(f.Name(), ".h")
 }
 
 //
@@ -49,7 +49,7 @@ func walkDir(path string) {
 
 // Implements "filepath.WalkFunc".
 func walkFn(errors chan error) filepath.WalkFunc {
-	return func(path string, info *os.FileInfo, err error) error {
+	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			errors <- err
 			return nil

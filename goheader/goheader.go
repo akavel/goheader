@@ -113,11 +113,11 @@ func main() {
 		switch info, err := os.Stat(path); {
 		case err != nil:
 			reportError(err)
-		case info.IsRegular():
+		case !info.IsDir():
 			if err := processFile(path); err != nil {
 				reportError(err)
 			}
-		case info.IsDirectory():
+		case info.IsDir():
 			walkDir(path)
 		}
 	}
