@@ -14,6 +14,7 @@
 
 package main
 
+/*
 import (
 	"os"
 	"path/filepath"
@@ -65,3 +66,4 @@ func walkFn(errors chan error) filepath.WalkFunc {
 		return nil
 	}
 }
+*/

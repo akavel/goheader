@@ -18,13 +18,64 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
-	"strings"
+	"path/filepath"
+	"runtime"
 
-	"github.com/akavel/goheader/h2go"
+	"labix.org/v2/pipe"
 )
+
+// Flags
+var (
+	debug = flag.Bool("d", false, "If set, outputs the source code translated not formatted.")
+	gcc   = flag.String("gcc", "", "Path to GNU C compiler executable")
+)
+
+func usage() {
+	fmt.Fprintf(os.Stderr, "Usage: goheader [-d] -gcc PATH_TO_GCC PATH_TO_HEADER.h\n")
+	flag.PrintDefaults()
+	os.Exit(2)
+}
+
+func run() error {
+	flag.Usage = usage
+	flag.Parse()
+	if *gcc == "" {
+		flag.Usage()
+	}
+	if len(flag.Args()) == 0 {
+		flag.Usage()
+	}
+	header := flag.Args()[0]
+
+	p := pipe.Line(
+		pipe.Exec(*gcc, "-E", header),
+		pipe.Filter(func(line []byte) bool { return !bytes.HasPrefix(line, []byte{'#'}) }), // strip line-no marks
+		pipe.Write(os.Stdout),
+	)
+
+	println(runtime.GOOS)
+	if runtime.GOOS == "windows" {
+		os.Setenv("PATH", filepath.Dir(*gcc)+";"+os.Getenv("PATH"))
+	}
+
+	err := pipe.Run(p)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func main() {
+	err := run()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+		os.Exit(1)
+	}
+}
+
+/*
 
 // Flags
 var (
@@ -132,21 +183,6 @@ func Write(self *h2go.Translate) error {
 	}
 
 	if *write {
-		/*filename := self.filename
-
-		switch *system {
-		case "linux":
-			dirBase := "/usr/include/"
-
-			if strings.HasPrefix(filename, dirBase) {
-				filename = strings.SplitN(filename, dirBase, 2)[1]
-				filename = strings.Replace(filename, "/", "_", -1)
-			} else {
-				filename = path.Base(filename)
-			}
-		}
-		filename = strings.SplitN(filename, ".h", 2)[0]
-		*/
 		filename := strings.SplitN(path.Base(self.Filename), ".h", 2)[0]
 		filename = fmt.Sprintf("h-%s_%s.go", filename, *system)
 
@@ -167,3 +203,4 @@ func Write(self *h2go.Translate) error {
 
 	return nil
 }
+*/
