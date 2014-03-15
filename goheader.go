@@ -18,16 +18,13 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
 	"strings"
-)
 
-// Represents the header file to translate. It has the Go output in both raw and
-// formatted code.
-type translate struct {
-	filename string        // The header file
-	raw, fmt *bytes.Buffer // The Go output
-}
+	"github.com/akavel/goheader/h2go"
+)
 
 // Flags
 var (
@@ -52,18 +49,18 @@ func processFile(filename string) error {
 	}
 	defer file.Close()
 
-	_translate := &translate{filename, &bytes.Buffer{}, &bytes.Buffer{}}
+	_translate := &h2go.Translate{filename, &bytes.Buffer{}, &bytes.Buffer{}}
 
 	if err := _translate.C(file); err != nil {
 		return err
 	}
 
-	err = _translate.format()
+	err = _translate.Format()
 	if !*debug && err != nil {
 		return err
 	}
 
-	if err := _translate.write(); err != nil {
+	if err := Write(_translate); err != nil {
 		return err
 	}
 
@@ -105,8 +102,8 @@ func main() {
 
 	// === Update Go base
 	cmd := strings.Join(os.Args, " ")
-	goBase = strings.Replace(goBase, "{cmd}", cmd, 1)
-	goBase = strings.Replace(goBase, "{pkg}", *pkgName, 1)
+	h2go.GoBase = strings.Replace(h2go.GoBase, "{cmd}", cmd, 1)
+	h2go.GoBase = strings.Replace(h2go.GoBase, "{pkg}", *pkgName, 1)
 
 	// === Translate all headers passed in command line.
 	for _, path := range flag.Args() {
@@ -123,4 +120,50 @@ func main() {
 	}
 
 	os.Exit(exitCode)
+}
+
+func Write(self *h2go.Translate) error {
+	output := new(bytes.Buffer)
+
+	if !*debug {
+		output = self.Fmt
+	} else {
+		output = self.Raw
+	}
+
+	if *write {
+		/*filename := self.filename
+
+		switch *system {
+		case "linux":
+			dirBase := "/usr/include/"
+
+			if strings.HasPrefix(filename, dirBase) {
+				filename = strings.SplitN(filename, dirBase, 2)[1]
+				filename = strings.Replace(filename, "/", "_", -1)
+			} else {
+				filename = path.Base(filename)
+			}
+		}
+		filename = strings.SplitN(filename, ".h", 2)[0]
+		*/
+		filename := strings.SplitN(path.Base(self.Filename), ".h", 2)[0]
+		filename = fmt.Sprintf("h-%s_%s.go", filename, *system)
+
+		outFile, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		defer outFile.Close()
+
+		if err = ioutil.WriteFile(filename, output.Bytes(), 0); err != nil {
+			return err
+		}
+	} else {
+		if _, err := os.Stdout.Write(output.Bytes()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
