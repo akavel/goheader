@@ -18,6 +18,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"io"
 )
 
 // Values by default used in 'gofmt'.
@@ -28,17 +29,17 @@ const (
 )
 
 // Formats the Go source code.
-func (self *Translate) Format() error {
+func Format(filename string, r io.Reader, w io.Writer) error {
 	fset := token.NewFileSet()
 
 	// The output is an abstract syntax tree (AST) representing the Go source.
-	ast, err := parser.ParseFile(fset, self.Filename, self.Raw.Bytes(), PARSER_MODE)
+	ast, err := parser.ParseFile(fset, filename, r, PARSER_MODE)
 	if err != nil {
 		return err
 	}
 
 	// Print an AST node to output.
-	err = (&printer.Config{Mode: PRINTER_MODE, Tabwidth: TAB_WIDTH}).Fprint(self.Fmt, fset, ast)
+	err = (&printer.Config{Mode: PRINTER_MODE, Tabwidth: TAB_WIDTH}).Fprint(w, fset, ast)
 	if err != nil {
 		return err
 	}

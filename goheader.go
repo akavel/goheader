@@ -23,6 +23,8 @@ import (
 	"runtime"
 
 	"labix.org/v2/pipe"
+
+	"github.com/akavel/goheader/h2go"
 )
 
 // Flags
@@ -48,16 +50,17 @@ func run() error {
 	}
 	header := flag.Args()[0]
 
+	if runtime.GOOS == "windows" {
+		os.Setenv("PATH", filepath.Dir(*gcc)+";"+os.Getenv("PATH"))
+	}
+
 	p := pipe.Line(
 		pipe.Exec(*gcc, "-E", header),
 		pipe.Filter(func(line []byte) bool { return !bytes.HasPrefix(line, []byte{'#'}) }), // strip line-no marks
 		pipe.Write(os.Stdout),
 	)
 
-	println(runtime.GOOS)
-	if runtime.GOOS == "windows" {
-		os.Setenv("PATH", filepath.Dir(*gcc)+";"+os.Getenv("PATH"))
-	}
+	_ = h2go.C
 
 	err := pipe.Run(p)
 	if err != nil {

@@ -16,21 +16,12 @@ package h2go
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
-
-// Represents the header file to translate. It has the Go output in both raw and
-// formatted code.
-type Translate struct {
-	Filename string        // The header file
-	Raw, Fmt *bytes.Buffer // The Go output
-}
 
 const COMMENT_LINE = "//!!! "
 const NoLastEnumValue = -1000
@@ -74,15 +65,12 @@ var (
 // NOTE: the regular expression for single comments (reSingleComment) returns
 // spaces before of "*/".
 // The issue is that Go's regexp lib. doesn't support non greedy matches.
-func (self *Translate) C(file *os.File) error {
+func C(fileBuf bufio.Reader, w bufio.Writer) error {
 	var isMultipleComment, isTypeBlock, isConstBlock, isStruct, isEnum bool
 	lastEnumValue := -1
 	extraTypedef := make([]string, 0, 0) // Types defined in the header file.
 
-	self.Raw.WriteString(GoBase)
-
-	// === File to read
-	fileBuf := bufio.NewReader(file)
+	w.WriteString(GoBase)
 
 	for {
 		line, err := fileBuf.ReadString('\n')
@@ -111,22 +99,22 @@ func (self *Translate) C(file *os.File) error {
 		if isMultipleComment {
 			if sub := reStartMultipleComment.FindStringSubmatch(line); sub != nil {
 				if sub[1] != "\n" {
-					self.Raw.WriteString("// " + sub[1])
+					w.WriteString("// " + sub[1])
 				}
 				continue
 			}
 			if sub := reEndMultipleComment.FindStringSubmatch(line); sub != nil {
 				if sub[1] != "" {
-					self.Raw.WriteString("// " + sub[1] + "\n")
+					w.WriteString("// " + sub[1] + "\n")
 				}
 				isMultipleComment = false
 				continue
 			}
 			if sub := reMiddleMultipleComment.FindStringSubmatch(line); sub != nil {
 				if sub[1] != "\n" {
-					self.Raw.WriteString("// " + sub[1])
+					w.WriteString("// " + sub[1])
 				} else {
-					self.Raw.WriteString("//" + sub[1])
+					w.WriteString("//" + sub[1])
 				}
 				continue
 			}
@@ -166,12 +154,12 @@ func (self *Translate) C(file *os.File) error {
 				line = COMMENT_LINE + line
 			}
 
-			self.Raw.WriteString(line)
+			w.WriteString(line)
 			continue
 		}
 
 		if isTypeBlock && line == "\n" {
-			self.Raw.WriteString(")\n\n")
+			w.WriteString(")\n\n")
 			isTypeBlock = false
 			continue
 		}
@@ -202,12 +190,12 @@ func (self *Translate) C(file *os.File) error {
 				line = COMMENT_LINE + line
 			}
 
-			self.Raw.WriteString(line)
+			w.WriteString(line)
 			continue
 		}
 
 		if isConstBlock && line == "\n" {
-			self.Raw.WriteString(")\n\n")
+			w.WriteString(")\n\n")
 			isConstBlock = false
 			continue
 		}
@@ -218,21 +206,21 @@ func (self *Translate) C(file *os.File) error {
 				isEnum = true
 				lastEnumValue = -1
 				if !isConstBlock {
-					self.Raw.WriteString("const (\n")
+					w.WriteString("const (\n")
 					isConstBlock = true
 				}
-				self.Raw.WriteString(fmt.Sprintf("// enum %s\n",
+				w.WriteString(fmt.Sprintf("// enum %s\n",
 					strings.Title(sub[2])))
 				continue
 			}
 		} else {
 			if sub := reEnumEnd.FindStringSubmatch(line); sub != nil {
-				self.Raw.WriteString("\n")
+				w.WriteString("\n")
 				isEnum = false
 				continue
 			}
 			if sub := reEnumValue.FindStringSubmatch(line); sub != nil {
-				self.Raw.WriteString(fmt.Sprintf("%s = %s\n",
+				w.WriteString(fmt.Sprintf("%s = %s\n",
 					strings.Title(sub[1]), sub[2]))
 				if v, err := strconv.Atoi(sub[2]); err == nil {
 					lastEnumValue = v
@@ -244,12 +232,12 @@ func (self *Translate) C(file *os.File) error {
 			if sub := reEnumIota.FindStringSubmatch(line); sub != nil {
 				if lastEnumValue != NoLastEnumValue {
 					lastEnumValue++
-					self.Raw.WriteString(fmt.Sprintf("%s = %d\n",
+					w.WriteString(fmt.Sprintf("%s = %d\n",
 						strings.Title(sub[1]), lastEnumValue))
 					continue
 				}
 			}
-			self.Raw.WriteString(fmt.Sprintf("%s%s", COMMENT_LINE, line))
+			w.WriteString(fmt.Sprintf("%s%s", COMMENT_LINE, line))
 			continue
 		}
 
@@ -259,11 +247,11 @@ func (self *Translate) C(file *os.File) error {
 				isStruct = true
 
 				if isConstBlock {
-					self.Raw.WriteString(")\n")
+					w.WriteString(")\n")
 					isConstBlock = false
 				}
 
-				self.Raw.WriteString(fmt.Sprintf(
+				w.WriteString(fmt.Sprintf(
 					"type %s struct {\n", strings.Title(sub[2])))
 				continue
 			}
@@ -291,11 +279,11 @@ func (self *Translate) C(file *os.File) error {
 					line = COMMENT_LINE + line
 				}
 
-				self.Raw.WriteString(line)
+				w.WriteString(line)
 				continue
 			}
 			if strings.HasPrefix(line, "}") {
-				self.Raw.WriteString(strings.Replace(line, ";", "", 1))
+				w.WriteString(strings.Replace(line, ";", "", 1))
 				isStruct = false
 				continue
 			}
@@ -307,7 +295,7 @@ func (self *Translate) C(file *os.File) error {
 			line = COMMENT_LINE + line
 		}
 
-		self.Raw.WriteString(line)
+		w.WriteString(line)
 	}
 
 	return nil
