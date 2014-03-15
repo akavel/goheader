@@ -65,7 +65,7 @@ var (
 // NOTE: the regular expression for single comments (reSingleComment) returns
 // spaces before of "*/".
 // The issue is that Go's regexp lib. doesn't support non greedy matches.
-func C(fileBuf bufio.Reader, w bufio.Writer) error {
+func C(fileBuf *bufio.Reader, w *bufio.Writer) error {
 	var isMultipleComment, isTypeBlock, isConstBlock, isStruct, isEnum bool
 	lastEnumValue := -1
 	extraTypedef := make([]string, 0, 0) // Types defined in the header file.

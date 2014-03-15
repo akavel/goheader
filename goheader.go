@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
@@ -56,7 +57,14 @@ func run() error {
 
 	p := pipe.Line(
 		pipe.Exec(*gcc, "-E", header),
-		pipe.Filter(func(line []byte) bool { return !bytes.HasPrefix(line, []byte{'#'}) }), // strip line-no marks
+		pipe.Filter(func(line []byte) bool {
+			return !bytes.HasPrefix(line, []byte{'#'}) // strip line-no marks
+		}),
+		pipe.TaskFunc(func(s *pipe.State) error {
+			out := bufio.NewWriter(s.Stdout)
+			defer out.Flush()
+			return h2go.C(bufio.NewReader(s.Stdin), out)
+		}),
 		pipe.Write(os.Stdout),
 	)
 
