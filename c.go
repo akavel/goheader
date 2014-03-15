@@ -18,8 +18,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"regexp"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
