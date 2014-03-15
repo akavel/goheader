@@ -44,7 +44,7 @@ func (self *translate) format() error {
 	}
 
 	// Print an AST node to output.
-	err = (&printer.Config{PRINTER_MODE, TAB_WIDTH}).Fprint(self.fmt, fset, ast)
+	err = (&printer.Config{Mode: PRINTER_MODE, Tabwidth: TAB_WIDTH}).Fprint(self.fmt, fset, ast)
 	if err != nil {
 		return err
 	}
