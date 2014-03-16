@@ -16,7 +16,8 @@ func (p *Printer) emit(d Decl, decor DecoratedType, ident, ornaments, typenameGo
 		p.Flatten = make(map[string]string)
 	}
 
-	if p.CurlyDepth == 0 && d.Typedef {
+	typedef := p.CurlyDepth == 0 && d.Typedef
+	if typedef {
 		p.W.WriteString("type ")
 	} else if p.CurlyDepth == 0 {
 		return fmt.Errorf("variables not supported")
@@ -42,7 +43,9 @@ func (p *Printer) emit(d Decl, decor DecoratedType, ident, ornaments, typenameGo
 		typenameGo = v
 	}
 	p.W.WriteString(typenameGo)
-	p.Flatten[ident] = typenameGo
+	if typedef {
+		p.Flatten[ident] = ornaments + typenameGo
+	}
 
 	p.W.WriteString("\t// " + original)
 	p.W.WriteString("\n")
