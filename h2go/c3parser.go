@@ -79,9 +79,8 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		}
 	}()
 
-	//TODO: structs, enums
+	//TODO: enums
 	//TODO: skip unions
-	//TODO: typedefs
 	//TODO: const
 
 	p.Lexer = Lexer{R: bufio.NewReader(strings.NewReader(s))}
