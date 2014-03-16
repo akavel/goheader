@@ -89,21 +89,8 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 	p.SkipBlank()
 
 	typenameGo, decor := p.ParseSimpleType()
-	/*
-		t := SimpleType{}
-		for setif(p.Maybe("const"), &t.Const) || setif(p.Maybe("unsigned"), &t.Unsigned) || setif(p.Maybe("long"), &t.Long) || setif(p.Maybe("short"), &t.Short) || setif(p.Maybe("signed"), &t.Signed) {
-			p.SkipBlank()
-		}
-		p.SkipBlank()
-		t.Struct = p.Maybe("struct")
-		p.SkipBlank()
-		t.Enum = p.Maybe("enum")
-		p.SkipBlank()
-
-		typename1 := p.MaybeIdentifier()
-		p.SkipBlank()
-	*/
 	p.SkipBlank()
+
 	bcurly1 := p.Maybe("{")
 	p.SkipBlank()
 	ecurly1 := p.Maybe("}")
@@ -116,13 +103,16 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		p.CurlyDepth--
 	}
 
-	ident2 := p.Identifier()
-	p.SkipBlank()
-	p.Expect(";")
-
 	if bcurly1 || ecurly1 {
 		return fmt.Errorf("struct/enum/union definitions not supported")
 	}
+
+	ptr := p.Maybe("*")
+	p.SkipBlank()
+
+	ident := p.Identifier()
+	p.SkipBlank()
+	p.Expect(";")
 
 	if p.CurlyDepth == 0 && d.Typedef {
 		p.W.WriteString("type ")
@@ -136,10 +126,14 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 
 	writeindent(p.W, p.CurlyDepth)
 
-	if ident2 != "" {
-		p.W.WriteString(upcase(ident2) + " ")
+	if ident != "" {
+		p.W.WriteString(upcase(ident) + " ")
 	} else {
 		return fmt.Errorf("anonymous structs/enums not supported")
+	}
+
+	if ptr {
+		p.W.WriteString("*")
 	}
 
 	if typenameGo != "" {
@@ -151,9 +145,6 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 	p.W.WriteString("\t// " + s)
 	p.W.WriteString("\n")
 	return nil
-
-	//p.CurlyDepth += strings.Count(s, "{") - strings.Count(s, "}")
-	//return fmt.Errorf("unrecognized declaration")
 }
 
 func upcase(s string) string {
