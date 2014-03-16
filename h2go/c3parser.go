@@ -99,11 +99,11 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 	ecurly1 := p.Maybe("}")
 	p.SkipBlank()
 
-	if bcurly1 {
-		p.CurlyDepth++
-	}
-	if ecurly1 {
-		p.CurlyDepth--
+	pluscurly := strings.Count(s, "{")
+	minuscurly := strings.Count(s, "}")
+	p.CurlyDepth += pluscurly - minuscurly
+	if pluscurly > 0 && minuscurly > 0 {
+		return fmt.Errorf("more than one { or } per line not supported")
 	}
 
 	if bcurly1 && decor.Struct { // && !ecurly1, because input from Simplify
