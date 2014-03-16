@@ -30,7 +30,7 @@ import (
 var FAIL = "//!!! "
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: goheader < HEADER.h > FILE.go\n")
+	fmt.Fprintf(os.Stderr, "Usage: goheader [TYPE_NAME] < HEADER.h >> FILE.go\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
@@ -38,6 +38,15 @@ func usage() {
 func run() error {
 	flag.Usage = usage
 	flag.Parse()
+
+	var filter string
+	switch len(flag.Args()) {
+	case 0:
+	case 1:
+		filter = flag.Args()[0]
+	default:
+		usage()
+	}
 
 	parser := h2go.SimpleLineParser{}
 	p := pipe.Line(
@@ -73,6 +82,7 @@ func run() error {
 			}
 			return out.Bytes()
 		}),
+		KeepTypename(filter),
 		pipe.Write(os.Stdout),
 	)
 
@@ -106,5 +116,30 @@ func ReplaceAll(p [][2]string) pipe.Pipe {
 			line = bytes.Replace(line, []byte(r[0]), []byte(r[1]), -1)
 		}
 		return line
+	})
+}
+
+func KeepTypename(t string) pipe.Pipe {
+	in := false
+	prefix := []byte("type " + t + " ")
+	prefix2 := []byte("struct {")
+	return pipe.Filter(func(line []byte) bool {
+		if t == "" {
+			return true
+		}
+
+		if bytes.HasPrefix(line, prefix) {
+			if bytes.HasPrefix(line[len(prefix):], prefix2) {
+				in = true
+			}
+			return true
+		}
+		if in && len(line) > 0 {
+			if line[0] == '}' {
+				in = false
+			}
+			return true
+		}
+		return false
 	})
 }
