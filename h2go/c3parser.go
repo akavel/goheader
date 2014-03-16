@@ -17,14 +17,51 @@ type Decl struct {
 	Typedef bool
 }
 
-type SimpleType struct {
-	Struct   bool
-	Enum     bool
-	Const    bool
-	Unsigned bool
-	Signed   bool
-	Long     bool
-	Short    bool
+type DecoratedType struct {
+	Struct bool
+	Enum   bool
+	Union  bool
+	Const  bool
+}
+
+func (p *SimpleLineParser) ParseSimpleType() (goTypename string, decorated DecoratedType) {
+	primitive := ""
+	consters := map[string]*bool{"const": &decorated.Const, "volatile": new(bool)}
+	qualifiers := map[string]int{"unsigned": 0, "long": 0, "short": 0, "signed": 0}
+	primitives := map[string]bool{"int": false, "char": false, "float": false, "double": false}
+	composite := map[string]*bool{"struct": &decorated.Struct, "enum": &decorated.Enum, "union": &decorated.Union}
+	// FIXME: on first time, bail out if empty
+	for {
+		p.SkipBlank()
+		id := p.MaybeIdentifier()
+
+		if _, ok := consters[id]; ok {
+			*consters[id] = true
+			continue
+		}
+		if _, ok := qualifiers[id]; ok {
+			qualifiers[id] = qualifiers[id] + 1
+			primitive = "int"
+			continue
+		}
+		if _, ok := primitives[id]; ok {
+			primitive = id
+			continue
+		}
+		if _, ok := composite[id]; ok {
+			*composite[id] = true
+			continue
+		}
+
+		if decorated.Struct || decorated.Enum || decorated.Union {
+			return upcase(id), decorated
+		}
+		if primitive == "" {
+			return upcase(id), decorated
+		}
+		p.Ungets([]byte(id))
+		return translatePrimitive(primitive, qualifiers), decorated
+	}
 }
 
 func (p *SimpleLineParser) ParseLine(s string) (err error) {
@@ -42,6 +79,8 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 	//TODO: typedefs
 	//TODO: const
 
+	//TODO: `short FOO;` vs `short int FOO;`
+
 	p.Lexer = Lexer{R: bufio.NewReader(strings.NewReader(s))}
 	p.SkipBlank()
 
@@ -49,17 +88,21 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 	d.Typedef = p.Maybe("typedef")
 	p.SkipBlank()
 
-	t := SimpleType{}
-	for setif(p.Maybe("const"), &t.Const) || setif(p.Maybe("unsigned"), &t.Unsigned) || setif(p.Maybe("long"), &t.Long) || setif(p.Maybe("short"), &t.Short) || setif(p.Maybe("signed"), &t.Signed) {
+	typenameGo, decor := p.ParseSimpleType()
+	/*
+		t := SimpleType{}
+		for setif(p.Maybe("const"), &t.Const) || setif(p.Maybe("unsigned"), &t.Unsigned) || setif(p.Maybe("long"), &t.Long) || setif(p.Maybe("short"), &t.Short) || setif(p.Maybe("signed"), &t.Signed) {
+			p.SkipBlank()
+		}
 		p.SkipBlank()
-	}
-	p.SkipBlank()
-	t.Struct = p.Maybe("struct")
-	p.SkipBlank()
-	t.Enum = p.Maybe("enum")
-	p.SkipBlank()
+		t.Struct = p.Maybe("struct")
+		p.SkipBlank()
+		t.Enum = p.Maybe("enum")
+		p.SkipBlank()
 
-	typename1 := p.MaybeIdentifier()
+		typename1 := p.MaybeIdentifier()
+		p.SkipBlank()
+	*/
 	p.SkipBlank()
 	bcurly1 := p.Maybe("{")
 	p.SkipBlank()
@@ -78,7 +121,7 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 	p.Expect(";")
 
 	if bcurly1 || ecurly1 {
-		return fmt.Errorf("stuct/enum/union definitions not supported")
+		return fmt.Errorf("struct/enum/union definitions not supported")
 	}
 
 	if p.CurlyDepth == 0 && d.Typedef {
@@ -87,15 +130,20 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		return fmt.Errorf("variables not supported")
 	}
 
+	if decor.Enum || decor.Union || decor.Const {
+		return fmt.Errorf("enum/union/const not supported")
+	}
+
+	writeindent(p.W, p.CurlyDepth)
+
 	if ident2 != "" {
 		p.W.WriteString(upcase(ident2) + " ")
 	} else {
 		return fmt.Errorf("anonymous structs/enums not supported")
 	}
 
-	typename1 = t.Translate(typename1)
-	if typename1 != "" {
-		p.W.WriteString(typename1)
+	if typenameGo != "" {
+		p.W.WriteString(typenameGo)
 	} else {
 		return fmt.Errorf("untyped declarations not supported")
 	}
@@ -119,23 +167,26 @@ func setif(condition bool, dst *bool) bool {
 	return condition
 }
 
-func (t *SimpleType) Translate(typename string) string {
-	switch typename {
-	case "int", "": // FIXME: is translation from empty to 'int' always ok here?
+func translatePrimitive(primitive string, q map[string]int) string {
+	//FIXME: verify if those are ok
+	switch primitive {
+	case "int":
 		switch {
 		//FIXME: handle long long (?)
-		case t.Long && t.Unsigned:
+		case q["long"] > 1:
+			panic("long long not supported")
+		case q["long"] > 0 && q["unsigned"] > 0:
 			return "uint32"
-		case t.Long:
+		case q["long"] > 0:
 			return "int32"
-		case t.Unsigned: // t.Short || !t.Short
+		case q["unsigned"] > 0: // "short" or not
 			return "uint16"
 		default:
 			return "int16"
 		}
 	case "char":
 		switch {
-		case t.Unsigned:
+		case q["unsigned"] > 0:
 			return "byte"
 		default:
 			return "int8"
@@ -145,6 +196,6 @@ func (t *SimpleType) Translate(typename string) string {
 	case "double": //FIXME: what about long double? panic?
 		return "float64"
 	default:
-		return upcase(typename)
+		panic("unknown primitive type")
 	}
 }

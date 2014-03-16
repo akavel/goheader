@@ -61,7 +61,10 @@ func run() error {
 		}),
 		BufferedFunc(h2go.Simplify),
 		pipe.Replace(func(line []byte) []byte {
-			s := strings.TrimRight(string(line), "\n\r")
+			s := strings.Trim(string(line), "\n\r\t ")
+			if s == "" {
+				return []byte{}
+			}
 			out := bytes.NewBuffer(nil)
 			parser.W = bufio.NewWriter(out)
 			err := parser.ParseLine(s)
