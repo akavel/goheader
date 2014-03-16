@@ -185,22 +185,38 @@ func setif(condition bool, dst *bool) bool {
 	return condition
 }
 
+/*
+want as described in MSDN:
+DWORD = unsigned long = uint32
+BOOL = int = int32
+BYTE = unsigned char = byte
+CHAR = char = int8
+
+*/
+
 func translatePrimitive(primitive string, q map[string]int) string {
 	//FIXME: verify if those are ok
 	switch primitive {
 	case "int":
 		switch {
+		case q["short"] > 0 && q["unsigned"] > 0:
+			return "uint16"
+		case q["short"] > 0:
+			return "int16"
+
 		//FIXME: handle long long (?)
 		case q["long"] > 1:
 			panic("long long not supported")
+
 		case q["long"] > 0 && q["unsigned"] > 0:
 			return "uint32"
 		case q["long"] > 0:
 			return "int32"
-		case q["unsigned"] > 0: // "short" or not
-			return "uint16"
+
+		case q["unsigned"] > 0:
+			return "uint32"
 		default:
-			return "int16"
+			return "int32"
 		}
 	case "char":
 		switch {
