@@ -50,7 +50,8 @@ caveats
 -------
 
   - doesn't parse function pointers nor function declarations as of now.
-  - doesn't parse unions, enums, nested structs.
+  - doesn't parse unions, enums, nested structs, const.
+  - doesn't parse global variables.
   - it makes assumptions on width of C `int` etc, you can tweak them in `translatePrimitive()` for your needs.
   - may eat your homework, etc.
 
