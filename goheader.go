@@ -16,22 +16,21 @@ import (
 var FAIL = "//!!! "
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: goheader [TYPE_NAME] < HEADER.h >> FILE.go\n")
+	fmt.Fprintf(os.Stderr, "Usage: goheader [-p GO_PACKAGE] [TYPE_NAME]... < HEADER.h >> FILE.go\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
+
+var (
+	pkg = flag.String("p", "", "If used, a `package GO_PACKAGE` line is printed before anything else.")
+)
 
 func run() error {
 	flag.Usage = usage
 	flag.Parse()
 
-	var filter string
-	switch len(flag.Args()) {
-	case 0:
-	case 1:
-		filter = flag.Args()[0]
-	default:
-		usage()
+	if *pkg != "" {
+		fmt.Println("package", *pkg)
 	}
 
 	parser := h2go.SimpleLineParser{}
@@ -91,7 +90,7 @@ func run() error {
 		}),
 
 		// Optional filtering to extract just one type
-		KeepTypename(filter),
+		KeepTypenames(flag.Args()),
 
 		pipe.Write(os.Stdout),
 	)
@@ -129,17 +128,26 @@ func ReplaceAll(p [][2]string) pipe.Pipe {
 	})
 }
 
-func KeepTypename(t string) pipe.Pipe {
+func KeepTypenames(t []string) pipe.Pipe {
+	m := map[string]struct{}{}
+	for _, s := range t {
+		m[s] = struct{}{}
+	}
+
 	in := false
-	prefix := []byte("type " + t + " ")
+	prefix1 := []byte("type ") // + t + " ")
 	prefix2 := []byte("struct {")
 	return pipe.Filter(func(line []byte) bool {
-		if t == "" {
+		if len(t) == 0 {
 			return true
 		}
 
-		if bytes.HasPrefix(line, prefix) {
-			if bytes.HasPrefix(line[len(prefix):], prefix2) {
+		if bytes.HasPrefix(line, prefix1) {
+			words := bytes.SplitN(line[len(prefix1):], []byte(" "), 2)
+			if _, ok := m[string(words[0])]; !ok {
+				return in // could 'return false', but here we will get more lines in some bad cases, helping to quickly debug
+			}
+			if bytes.HasPrefix(words[1], prefix2) {
 				in = true
 			}
 			return true
