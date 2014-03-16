@@ -46,6 +46,17 @@ should give a result like below:
 		RpcFlags                uint32                  // unsigned long RpcFlags;
 	}
 
+caveats
+-------
+
+  - doesn't parse function pointers nor function declarations as of now.
+  - doesn't parse unions, enums, nested structs.
+  - it makes assumptions on width of C `int` etc, you can tweak them in `translatePrimitive()` for your needs.
+  - may eat your homework, etc.
+
+In cases above (except the homework), you may still call it without any arguments, and pipe the `.h` through it; it will dump everything what it could, and there may still be some partial work done for you already in the output.
+
+
 license
 -------
 
