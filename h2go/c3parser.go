@@ -107,13 +107,24 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		return fmt.Errorf("struct/enum/union definitions not supported")
 	}
 
-	ptr := p.Maybe("*")
-	p.SkipBlank()
+	for {
+		ident, ornaments := p.ParseOrnamentedIdent()
+		fin := p.Maybe(";")
+		if !p.Maybe(",") && !fin {
+			panic("expected , or ;")
+		}
+		err = p.emit(d, decor, ident, ornaments, typenameGo, s)
+		if err != nil {
+			return err
+		}
+		if fin {
+			break
+		}
+	}
+	return nil
+}
 
-	ident := p.Identifier()
-	p.SkipBlank()
-	p.Expect(";")
-
+func (p *SimpleLineParser) emit(d Decl, decor DecoratedType, ident, ornaments, typenameGo, original string) error {
 	if p.CurlyDepth == 0 && d.Typedef {
 		p.W.WriteString("type ")
 	} else if p.CurlyDepth == 0 {
@@ -132,9 +143,7 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		return fmt.Errorf("anonymous structs/enums not supported")
 	}
 
-	if ptr {
-		p.W.WriteString("*")
-	}
+	p.W.WriteString(ornaments)
 
 	if typenameGo != "" {
 		p.W.WriteString(typenameGo)
@@ -142,9 +151,36 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		return fmt.Errorf("untyped declarations not supported")
 	}
 
-	p.W.WriteString("\t// " + s)
+	p.W.WriteString("\t// " + original)
 	p.W.WriteString("\n")
 	return nil
+}
+
+func (p *SimpleLineParser) ParseOrnamentedIdent() (ident, ornaments string) {
+	ptr := p.Maybe("*")
+	p.SkipBlank()
+
+	ident = p.Identifier()
+	p.SkipBlank()
+
+	for {
+		if !p.Maybe("[") {
+			break
+		}
+		p.SkipBlank()
+
+		n := p.ExpectNumber()
+		p.SkipBlank()
+
+		p.Expect("]")
+		p.SkipBlank()
+
+		ornaments += "[" + n + "]"
+	}
+	if ptr {
+		ornaments += "*"
+	}
+	return
 }
 
 func upcase(s string) string {

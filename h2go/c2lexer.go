@@ -123,3 +123,21 @@ func (l *Lexer) Identifier() string {
 	}
 	return s
 }
+
+func (l *Lexer) ExpectNumber() string {
+	buf := []byte{}
+	for {
+		c, eof := l.Getc()
+		if c < '0' || c > '9' {
+			if !eof {
+				l.Ungetc(c)
+			}
+			break
+		}
+		buf = append(buf, c)
+	}
+	if len(buf) == 0 {
+		panic("expected number")
+	}
+	return string(buf)
+}
