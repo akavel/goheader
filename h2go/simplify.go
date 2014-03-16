@@ -39,7 +39,9 @@ func Simplify(r *bufio.Reader, w *bufio.Writer) error {
 			writeindent(w, indent)
 			waswhite = true
 		case '}':
+			w.WriteString("\n")
 			indent--
+			writeindent(w, indent)
 			fallthrough
 		default:
 			w.WriteByte(c)

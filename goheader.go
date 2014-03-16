@@ -20,11 +20,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"labix.org/v2/pipe"
 
 	"github.com/akavel/goheader/h2go"
 )
+
+var FAIL = "//!!! "
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: goheader < HEADER.h > FILE.go\n")
@@ -36,6 +39,7 @@ func run() error {
 	flag.Usage = usage
 	flag.Parse()
 
+	parser := h2go.SimpleLineParser{}
 	p := pipe.Line(
 		pipe.Read(os.Stdin),
 		BufferedFunc(h2go.Simplify),
@@ -56,6 +60,16 @@ func run() error {
 			{`__attribute__((packed))`, ` /* PACKED!!! */ `},
 		}),
 		BufferedFunc(h2go.Simplify),
+		pipe.Replace(func(line []byte) []byte {
+			s := strings.TrimRight(string(line), "\n\r")
+			out := bytes.NewBuffer(nil)
+			parser.W = bufio.NewWriter(out)
+			err := parser.ParseLine(s)
+			if err != nil {
+				return []byte(fmt.Sprintf("%s %s // %s\n", FAIL, s, err))
+			}
+			return out.Bytes()
+		}),
 		//pipe.TaskFunc(func(s *pipe.State) error {
 		//	out := bufio.NewWriter(s.Stdout)
 		//	defer out.Flush()
