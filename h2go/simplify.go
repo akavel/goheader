@@ -24,6 +24,23 @@ func Simplify(r *bufio.Reader, w *bufio.Writer) error {
 		}
 
 		switch c {
+		case '#': // preprocessor directive
+			w.WriteByte('#')
+			for {
+				c, err := r.ReadByte()
+				if err == io.EOF {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				if c == '\n' || c == '\r' {
+					w.WriteString(";\n")
+					waswhite = true
+					break
+				}
+				w.WriteByte(c)
+			}
 		case '\n', '\r', '\t', ' ':
 			if !waswhite {
 				w.WriteByte(' ')

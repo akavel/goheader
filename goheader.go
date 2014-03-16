@@ -37,7 +37,19 @@ func run() error {
 	parser := h2go.SimpleLineParser{}
 	p := pipe.Line(
 		pipe.Read(os.Stdin),
+
+		// Strip lines starting with '# 2342' -- i.e. compiler directive for marking line number
+		pipe.Filter(func(line []byte) bool {
+			line = bytes.TrimSpace(line)
+			if len(line) == 0 || line[0] != '#' {
+				return true
+			}
+			line = bytes.TrimSpace(line[1:])
+			return len(line) == 0 || line[0] < '0' || line[0] > '9'
+		}),
+
 		BufferedFunc(h2go.Simplify),
+
 		ReplaceAll([][2]string{
 			{`__extension__`, ` `},
 			{`__attribute__ ((`, `__attribute__((`},
@@ -53,8 +65,17 @@ func run() error {
 			{`__attribute__((__noreturn__))`, ` `},
 			{`__attribute__((__dllimport__))`, ` `},
 			{`__attribute__((packed))`, ` /* PACKED!!! */ `},
+			{`# pragma `, `#pragma `},
+			{`#pragma pack (`, `#pragma pack(`},
+			{`#pragma pack( `, `#pragma pack(`},
 		}),
+
 		BufferedFunc(h2go.Simplify),
+
+		// Add warnings in case of packing pragmas
+		WarnPackingPragmas(),
+
+		// Main parsing & translation
 		pipe.Replace(func(line []byte) []byte {
 			s := strings.Trim(string(line), "\n\r\t ")
 			if s == "" {
@@ -68,7 +89,10 @@ func run() error {
 			}
 			return out.Bytes()
 		}),
+
+		// Optional filtering to extract just one type
 		KeepTypename(filter),
+
 		pipe.Write(os.Stdout),
 	)
 
@@ -127,5 +151,23 @@ func KeepTypename(t string) pipe.Pipe {
 			return true
 		}
 		return false
+	})
+}
+
+func WarnPackingPragmas() pipe.Pipe {
+	stack := []string{}
+	push := []byte(`#pragma pack(push`)
+	pop := []byte(`#pragma pack(pop`)
+	return pipe.Replace(func(line []byte) []byte {
+		buf := bytes.TrimSpace(line)
+		switch {
+		case bytes.HasPrefix(buf, push):
+			stack = append(stack, " //WARNING: "+string(buf)+"\n")
+		case bytes.HasPrefix(buf, pop):
+			stack = stack[:len(stack)-1]
+		case len(stack) > 0 && len(buf) > 0:
+			return append(buf, []byte(stack[len(stack)-1])...)
+		}
+		return line
 	})
 }
