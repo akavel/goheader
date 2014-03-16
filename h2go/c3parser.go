@@ -104,10 +104,13 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 
 	for {
 		ident, ornaments := p.ParseOrnamentedIdent()
+
 		fin := p.Maybe(";")
 		if !p.Maybe(",") && !fin {
 			panic("expected , or ;")
 		}
+		p.SkipBlank()
+
 		err = p.emit(d, decor, ident, ornaments, typenameGo, s)
 		if err != nil {
 			return err
