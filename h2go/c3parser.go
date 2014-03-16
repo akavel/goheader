@@ -18,9 +18,13 @@ type Decl struct {
 }
 
 type SimpleType struct {
-	Struct bool
-	Enum   bool
-	Const  bool
+	Struct   bool
+	Enum     bool
+	Const    bool
+	Unsigned bool
+	Signed   bool
+	Long     bool
+	Short    bool
 }
 
 func (p *SimpleLineParser) ParseLine(s string) (err error) {
@@ -46,7 +50,9 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 	p.SkipBlank()
 
 	t := SimpleType{}
-	t.Const = p.Maybe("const")
+	for setif(p.Maybe("const"), &t.Const) || setif(p.Maybe("unsigned"), &t.Unsigned) || setif(p.Maybe("long"), &t.Long) || setif(p.Maybe("short"), &t.Short) || setif(p.Maybe("signed"), &t.Signed) {
+		p.SkipBlank()
+	}
 	p.SkipBlank()
 	t.Struct = p.Maybe("struct")
 	p.SkipBlank()
@@ -87,8 +93,9 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		return fmt.Errorf("anonymous structs/enums not supported")
 	}
 
+	typename1 = t.Translate(typename1)
 	if typename1 != "" {
-		p.W.WriteString(upcase(typename1))
+		p.W.WriteString(typename1)
 	} else {
 		return fmt.Errorf("untyped declarations not supported")
 	}
@@ -103,4 +110,41 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 
 func upcase(s string) string {
 	return strings.Title(s)
+}
+
+func setif(condition bool, dst *bool) bool {
+	if condition {
+		*dst = true
+	}
+	return condition
+}
+
+func (t *SimpleType) Translate(typename string) string {
+	switch typename {
+	case "int", "": // FIXME: is translation from empty to 'int' always ok here?
+		switch {
+		//FIXME: handle long long (?)
+		case t.Long && t.Unsigned:
+			return "uint32"
+		case t.Long:
+			return "int32"
+		case t.Unsigned: // t.Short || !t.Short
+			return "uint16"
+		default:
+			return "int16"
+		}
+	case "char":
+		switch {
+		case t.Unsigned:
+			return "byte"
+		default:
+			return "int8"
+		}
+	case "float":
+		return "float32"
+	case "double": //FIXME: what about long double? panic?
+		return "float64"
+	default:
+		return upcase(typename)
+	}
 }
