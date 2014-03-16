@@ -9,6 +9,8 @@ import (
 type SimpleLineParser struct {
 	Lexer
 	Printer
+
+	compositeStruct
 }
 
 type Decl struct {
@@ -20,6 +22,12 @@ type DecoratedType struct {
 	Enum   bool
 	Union  bool
 	Const  bool
+}
+
+type compositeStruct struct {
+	decl       Decl
+	typenameGo string
+	decor      DecoratedType
 }
 
 func (p *SimpleLineParser) ParseSimpleType() (goTypename string, decorated DecoratedType) {
@@ -98,8 +106,26 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		p.CurlyDepth--
 	}
 
-	if bcurly1 || ecurly1 {
-		return fmt.Errorf("struct/enum/union definitions not supported")
+	if bcurly1 && decor.Struct { // && !ecurly1, because input from Simplify
+		if p.CurlyDepth > 1 {
+			return fmt.Errorf("nested structs not supported; be careful with alignment")
+		}
+		if typenameGo == "" || decor.Const {
+			p.compositeStruct = compositeStruct{}
+			return fmt.Errorf("unnamed/const struct definitions not supported")
+		}
+		p.decl = d
+		p.typenameGo = typenameGo
+		p.decor = decor
+
+		p.W.WriteString("type " + typenameGo + " struct {\t// " + s + "\n")
+		return nil
+	} else if ecurly1 && p.CurlyDepth == 0 && p.decor.Struct {
+		p.W.WriteString("}\n")
+		typenameGo = p.typenameGo
+		d = p.decl
+	} else if bcurly1 || ecurly1 {
+		return fmt.Errorf("enum/union/nested-struct definitions not supported")
 	}
 
 	for {
