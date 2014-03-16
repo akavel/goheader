@@ -73,15 +73,8 @@ func run() error {
 			}
 			return out.Bytes()
 		}),
-		//pipe.TaskFunc(func(s *pipe.State) error {
-		//	out := bufio.NewWriter(s.Stdout)
-		//	defer out.Flush()
-		//	return h2go.C(bufio.NewReader(s.Stdin), out)
-		//}),
 		pipe.Write(os.Stdout),
 	)
-
-	_ = h2go.C
 
 	err := pipe.Run(p)
 	if err != nil {
