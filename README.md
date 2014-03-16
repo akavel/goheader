@@ -45,3 +45,16 @@ should give a result like below:
 		ImportContext           uintptr                 // void *ImportContext;
 		RpcFlags                uint32                  // unsigned long RpcFlags;
 	}
+
+license
+-------
+
+Copyright (c) 2014 by Mateusz Czapliński <czapkofan@gmail.com>
+
+The code of goheader is released by me to Public Domain;
+
+If that does not work for you, I hereby allow copying this crap (i.e. the full sourcecode of goheader) under whichever license you prefer from the list below:
+
+  * [WTFPL](https://en.wikipedia.org/wiki/WTFPL),
+  * BSD 2-clause or 3-clause,
+  * "MIT/X" or "MIT/Expat" or I don't know whatever else.
