@@ -3,6 +3,7 @@ package h2go
 import (
 	"bufio"
 	"fmt"
+	"strings"
 )
 
 type Printer struct {
@@ -34,17 +35,20 @@ func (p *Printer) emit(d Decl, decor DecoratedType, ident, ornaments, typenameGo
 	}
 	p.W.WriteString(upcase(ident) + " ")
 
-	p.W.WriteString(ornaments)
-
 	if typenameGo == "" {
 		return fmt.Errorf("untyped declarations not supported")
 	}
 	if v := p.Flatten[typenameGo]; v != "" {
 		typenameGo = v
 	}
-	p.W.WriteString(typenameGo)
+
+	full := ornaments + typenameGo
+	if strings.HasSuffix(full, "*Void") {
+		full = strings.TrimSuffix(full, "*Void") + "uintptr"
+	}
+	p.W.WriteString(full)
 	if typedef {
-		p.Flatten[ident] = ornaments + typenameGo
+		p.Flatten[ident] = full
 	}
 
 	p.W.WriteString("\t// " + original)
