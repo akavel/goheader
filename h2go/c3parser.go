@@ -34,7 +34,7 @@ func (p *SimpleLineParser) ParseSimpleType() (goTypename string, decorated Decor
 	primitive := ""
 	consters := map[string]*bool{"const": &decorated.Const, "volatile": new(bool)}
 	qualifiers := map[string]int{"unsigned": 0, "long": 0, "short": 0, "signed": 0}
-	primitives := map[string]bool{"int": false, "char": false, "float": false, "double": false}
+	primitives := map[string]bool{"int": false, "char": false, "float": false, "double": false, "wchar_t": false}
 	composite := map[string]*bool{"struct": &decorated.Struct, "enum": &decorated.Enum, "union": &decorated.Union}
 	// FIXME: on first time, bail out if empty
 	for {
@@ -225,6 +225,13 @@ func translatePrimitive(primitive string, q map[string]int) string {
 		default:
 			return "int8"
 		}
+	case "wchar_t":
+		//switch {
+		//case q["unsigned"] > 0:
+		return "uint16"
+		//default:
+		//	return "int16"
+		//}
 	case "float":
 		return "float32"
 	case "double": //FIXME: what about long double? panic?
