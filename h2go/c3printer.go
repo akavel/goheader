@@ -3,6 +3,7 @@ package h2go
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -24,8 +25,8 @@ func (p *Printer) emit(d Decl, decor DecoratedType, ident, ornaments, typenameGo
 		return fmt.Errorf("variables not supported")
 	}
 
-	if decor.Enum || decor.Union || decor.Const {
-		return fmt.Errorf("enum/union/const not supported")
+	if decor.Enum || decor.Union {
+		return fmt.Errorf("enum/union not supported")
 	}
 
 	writeindent(p.W, p.CurlyDepth)
@@ -47,11 +48,41 @@ func (p *Printer) emit(d Decl, decor DecoratedType, ident, ornaments, typenameGo
 		full = strings.TrimSuffix(full, "*Void") + "uintptr"
 	}
 	p.W.WriteString(full)
-	if typedef {
+	if typedef && p.Flatten[ident] == "" {
 		p.Flatten[ident] = full
 	}
 
 	p.W.WriteString("\t// " + original)
 	p.W.WriteString("\n")
 	return nil
+}
+
+func (p *Printer) Preload(gofile string) error {
+	if p.Flatten == nil {
+		p.Flatten = make(map[string]string)
+	}
+
+	f, err := os.Open(gofile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	prefix1 := "type "
+
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		line := s.Text()
+		if strings.Contains(line, "{") {
+			continue // TODO: structs not supported
+		}
+		if !strings.HasPrefix(line, prefix1) {
+			continue
+		}
+		words := strings.SplitN(line[len(prefix1):], " ", 2)
+		if p.Flatten[words[0]] == "" {
+			p.Flatten[words[0]] = words[1]
+		}
+	}
+	return s.Err()
 }

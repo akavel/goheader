@@ -109,9 +109,9 @@ func (p *SimpleLineParser) ParseLine(s string) (err error) {
 		if p.CurlyDepth > 1 {
 			return fmt.Errorf("nested structs not supported; be careful with alignment")
 		}
-		if typenameGo == "" || decor.Const {
+		if typenameGo == "" {
 			p.compositeStruct = compositeStruct{}
-			return fmt.Errorf("unnamed/const struct definitions not supported")
+			return fmt.Errorf("unnamed struct definitions not supported")
 		}
 		p.decl = d
 		p.typenameGo = typenameGo

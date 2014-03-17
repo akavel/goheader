@@ -16,13 +16,14 @@ import (
 var FAIL = "//!!! "
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: goheader [-p GO_PACKAGE] [TYPE_NAME]... < HEADER.h >> FILE.go\n")
+	fmt.Fprintf(os.Stderr, "Usage: goheader [-p GO_PACKAGE] [-l PRELOAD.go] [TYPE_NAME]... < HEADER.h >> FILE.go\n")
 	flag.PrintDefaults()
 	os.Exit(2)
 }
 
 var (
-	pkg = flag.String("p", "", "If used, a `package GO_PACKAGE` line is printed before anything else.")
+	pkg     = flag.String("p", "", "If used, a `package GO_PACKAGE` line is printed before anything else.")
+	preload = flag.String("l", "", "If used, preloads type definitions from PRELOAD.go")
 )
 
 func run() error {
@@ -34,6 +35,14 @@ func run() error {
 	}
 
 	parser := h2go.SimpleLineParser{}
+
+	if *preload != "" {
+		err := parser.Preload(*preload)
+		if err != nil {
+			return err
+		}
+	}
+
 	p := pipe.Line(
 		pipe.Read(os.Stdin),
 
